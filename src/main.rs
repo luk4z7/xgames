@@ -170,6 +170,7 @@ impl State {
         self.apply_click(ctx);
     }
 
+    // &mut self is a reference to `&mut State`
     fn apply_click(&mut self, ctx: &mut BTerm) {
         // Check what type the letter the user choice
         if let Some(key) = ctx.key {
