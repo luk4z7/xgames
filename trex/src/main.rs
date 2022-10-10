@@ -2,21 +2,10 @@
 
 use bracket_lib::prelude::*;
 
-const SCREEN_WIDTH: i32 = 640;
-const SCREEN_HEIGHT: i32 = 400;
-
-struct Dood {
-    x: i32,
-    y: i32,
-}
-
-struct State {
-    frame: usize,
-    timer: f32,
-    doods: Vec<Dood>,
-    obstacle: Obstacle,
-    //    rng: RandomNumberGenerator,
-}
+const SCREEN_WIDTH: i32 = 80;
+const SCREEN_HEIGHT: i32 = 50;
+const FRAME_DURATION: f32 = 120.0;
+const DRAGON_FRAMES: [u16; 2] = [2, 3];
 
 struct Obstacle {
     x: i32,
@@ -30,112 +19,212 @@ impl Obstacle {
 
         Obstacle {
             x,
-            gap_y: random.range(5, 20),
-            size: i32::max(2, 10 - score),
+            gap_y: random.range(5, 10),
+            size: i32::max(2, 70 - score),
         }
     }
 
     fn render(&mut self, ctx: &mut BTerm, player_x: i32) {
+        // The ground
         for x in 0..SCREEN_WIDTH {
-            ctx.set(x, SCREEN_HEIGHT - 1, WHITE, WHITE, to_cp437('#'));
+            ctx.set(x, SCREEN_HEIGHT - 2, WHITE, WHITE, to_cp437('#'));
         }
 
         let screen_x = self.x - player_x;
         let half_size = self.size / 2;
-
+        // Top wall
+        // Draw the top half of the obstacles
         for y in 0..self.gap_y - half_size {
-            ctx.set(screen_x, y, WHITE, NAVY, 10);
+            ctx.set(screen_x, y, WHITE, NAVY, 179);
         }
 
-        for y in self.gap_y + half_size..SCREEN_HEIGHT - 1 {
-            ctx.set(screen_x, y, WHITE, NAVY, 10);
+        // Bottom wall - now leaving room for the ground
+        // Draw the bottom half of the obstacle
+        for y in self.gap_y + half_size..SCREEN_HEIGHT - 2 {
+            ctx.set(screen_x, y, WHITE, NAVY, 179);
+        }
+    }
+
+    // This function receives a borrowed reference to the player as a parameter
+    fn hit_obstacle(&self, player: &Player) -> bool {
+        let half_size = self.size / 2;
+        player.x == self.x
+            && ((player.y as i32) < self.gap_y - half_size
+                || player.y as i32 > self.gap_y + half_size)
+    }
+}
+
+struct Player {
+    x: i32,
+    y: f32,
+    velocity: f32,
+    frame: usize, // Usize to index arrays
+}
+
+impl Player {
+    fn new(x: i32, y: i32) -> Self {
+        Player {
+            x,
+            y: y as f32,
+            velocity: 45.0,
+            frame: 0,
+        }
+    }
+
+    fn render(&mut self, ctx: &mut BTerm) {
+        ctx.set_active_console(1);
+        ctx.cls();
+        ctx.set_fancy(
+            PointF::new(3.0, self.y),
+            1,
+            Degrees::new(0.0),
+            PointF::new(6.2, 6.2),
+            WHITE,
+            WHITE,
+            DRAGON_FRAMES[self.frame],
+        );
+        ctx.set_active_console(0);
+    }
+
+    fn gravity_and_move(&mut self) {
+        // jump
+        self.y = self.velocity;
+        if self.velocity <= 32.0 {
+            for i in 1..10000 {
+                if i > 9986 {
+                    self.velocity += 1.0;
+                    println!("self.velocity += {:}", self.velocity);
+                }
+            }
+        }
+
+        println!("self.y {:}", self.y);
+        self.x += 10;
+        self.frame += 1;
+        self.frame = self.frame % 2;
+    }
+
+    fn flap(&mut self) {
+        for i in 1..10000 {
+            if i > 9986 {
+                self.velocity -= 1.0;
+                println!("self.velocity -= {:}", self.velocity);
+            }
+        }
+    }
+}
+
+enum GameMode {
+    Menu,
+    Playing,
+    End,
+}
+
+struct State {
+    player: Player,
+    frame_time: f32,
+    mode: GameMode,
+    obstacle: Obstacle,
+    score: i32,
+}
+
+impl State {
+    fn new() -> Self {
+        State {
+            player: Player::new(0, 0),
+            frame_time: 0.0,
+            mode: GameMode::Menu,
+            obstacle: Obstacle::new(SCREEN_WIDTH, 0),
+            score: 0,
+        }
+    }
+
+    fn play(&mut self, ctx: &mut BTerm) {
+        let invisible = RGBA::from_f32(255.0, 255.0, 255.0, 255.0);
+        ctx.cls_bg(invisible); // spefify the background color
+        self.frame_time += ctx.frame_time_ms;
+        if self.frame_time > FRAME_DURATION {
+            self.frame_time = 0.0;
+            self.player.gravity_and_move();
+        }
+
+        if let Some(VirtualKeyCode::Space) = ctx.key {
+            self.player.flap();
+        }
+
+        self.player.render(ctx);
+        ctx.print(0, 0, "Press SPACE to jump");
+        ctx.print(0, 1, &format!("Score: {}", self.score));
+
+        self.obstacle.render(ctx, self.player.x);
+        if self.player.x > self.obstacle.x {
+            self.score += 1;
+            self.obstacle = Obstacle::new(self.player.x + SCREEN_WIDTH, self.score);
+        }
+
+        if self.obstacle.hit_obstacle(&self.player) {
+            self.mode = GameMode::End;
+        }
+    }
+
+    fn main_menu(&mut self, ctx: &mut BTerm) {
+        ctx.cls();
+        ctx.print_color_centered(5, YELLOW, BLACK, "Welcome to T-Rex fake");
+        ctx.print_color_centered(8, CYAN, BLACK, "(P) Play Game");
+        ctx.print_color_centered(9, CYAN, BLACK, "(Q) Quit Game");
+
+        self.apply_click(ctx);
+    }
+
+    fn restart(&mut self) {
+        self.player = Player::new(2, SCREEN_WIDTH / 2);
+        self.frame_time = 0.0;
+        self.obstacle = Obstacle::new(SCREEN_WIDTH, 0);
+        self.score = 0;
+        self.mode = GameMode::Playing
+    }
+
+    fn dead(&mut self, ctx: &mut BTerm) {
+        ctx.cls();
+        ctx.print_color_centered(5, RED, BLACK, "You are dead!");
+        ctx.print_centered(6, &format!("You earned {} points", self.score));
+        ctx.print_color_centered(8, CYAN, BLACK, "(P) Play Again");
+        ctx.print_color_centered(9, CYAN, BLACK, "(Q) Quit Game");
+
+        self.apply_click(ctx);
+    }
+
+    fn apply_click(&mut self, ctx: &mut BTerm) {
+        if let Some(key) = ctx.key {
+            match key {
+                VirtualKeyCode::P => self.restart(),
+                VirtualKeyCode::Q => ctx.quitting = true,
+                _ => {} // do nothing
+            }
         }
     }
 }
 
 impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
-        ctx.cls_bg(NAVY);
-
-        ctx.set_active_console(1);
-        ctx.cls();
-        ctx.print(1, 1, "Watch them go!");
-        ctx.printer(
-            1,
-            2,
-            &format!("#[pink]FPS: #[]{}", ctx.fps),
-            TextAlign::Left,
-            None,
-        );
-
-        ctx.set_active_console(0);
-        ctx.cls();
-
-        let mut random = RandomNumberGenerator::new();
-        self.obstacle.render(ctx, random.range(5, 20));
-
-        for dood in self.doods.iter() {
-            ctx.add_sprite(
-                Rect::with_size(dood.x, dood.y, 80, 100),
-                0 - dood.y,
-                RGBA::from_f32(4.0, 5.0, 5.0, 5.0),
-                self.frame % 2,
-            )
-        }
-
-        self.timer += ctx.frame_time_ms;
-        if self.timer > 66.0 {
-            self.timer = 0.0;
-            self.frame += 1;
-
-            //        for dood in self.doods.iter_mut() {
-            //               dood.x += self.rng.range(0, 2) - 1;
-            //             dood.y += self.rng.range(0, 2) - 1;
-            //      }
+        ctx.cls(); // cls clear the window
+        ctx.print_centered(20, "loading...");
+        match self.mode {
+            GameMode::Menu => self.main_menu(ctx),
+            GameMode::End => self.dead(ctx),
+            GameMode::Playing => self.play(ctx),
         }
     }
 }
 
 fn main() -> BError {
     let context = BTermBuilder::new()
-        .with_sprite_console(640, 400, 0)
-        .with_font("terminal8x8.png", 8, 8)
-        .with_simple_console_no_bg(80, 50, "terminal8x8.png")
-        .with_title("Bracket Terminal - Sprite Console")
-        .with_sprite_sheet(
-            SpriteSheet::new("dinod.png")
-                .add_sprite(Rect::with_size(936, 45, 44, 60))
-                .add_sprite(Rect::with_size(980, 45, 44, 60)),
-            //        .add_sprite(Rect::with_size(170, 0, 85, 132))
-            //           .add_sprite(Rect::with_size(255, 0, 85, 132)),
-        )
-        //      .with_sprite_sheet(
-        //        SpriteSheet::new("dinod.png")
-        //          .add_sprite(Rect::with_size(1200, 1200, 90, 200))
-        //        .add_sprite(Rect::with_size(85, 0, 85, 132)), // .add_sprite(Rect::with_size(170, 0, 85, 132))
-        // .add_sprite(Rect::with_size(255, 0, 85, 132)),
-        //)
-        .with_vsync(false)
+        .with_font("../resources/dinod.png", 32, 32)
+        .with_simple_console(SCREEN_WIDTH, SCREEN_HEIGHT, "../resources/dinod.png")
+        .with_fancy_console(SCREEN_WIDTH, SCREEN_HEIGHT, "../resources/dinod.png")
+        .with_title("T-Rex Fake")
+        .with_tile_dimensions(16, 16)
         .build()?;
 
-    //    let mut rng = RandomNumberGenerator::new();
-    let mut doods = Vec::new();
-    // for _ in 0..100 {
-    doods.push(Dood {
-        //       x: rng.range(0, 100),
-        //     y: rng.range(0, 100),
-        x: 90,
-        y: 220,
-    });
-    //}
-
-    let gs = State {
-        frame: 10,
-        timer: 0.0,
-        doods,
-        obstacle: Obstacle::new(SCREEN_WIDTH, 80),
-        //      rng,
-    };
-
-    main_loop(context, gs)
+    main_loop(context, State::new())
 }
