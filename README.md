@@ -1,8 +1,9 @@
-## xGames
+## X-Games
 
-xGames built on top of bracket-lib, that control the event loop and window events
+Games built on top of bracket-lib, that control the event loop and window events
 
 ### Games
 
-dungeoncrawl
-flappydragon
+> dungeoncrawl
+> flappydragon
+> trex
