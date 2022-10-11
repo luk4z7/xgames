@@ -2,7 +2,8 @@ use crate::prelude::*;
 
 const NUM_TILES: usize = (SCREEN_WIDTH * SCREEN_HEIGHT) as usize;
 
-#[derive(Copy, Clone, PartialEq)]
+// with this derives is possible to call mytile.Clone() etc ..
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum TileType {
     Wall,
     Floor,
@@ -14,6 +15,9 @@ pub struct Map {
 
 impl Map {
     pub fn new() -> Self {
+        let x = TileType::Wall;
+        _ = x;
+
         Self {
             tiles: vec![TileType::Floor; NUM_TILES],
         }
@@ -37,6 +41,8 @@ impl Map {
     }
 }
 
+// return usize because vectors are indexed by
+// a variable of type usize
 pub fn map_idx(x: i32, y: i32) -> usize {
     ((y * SCREEN_WIDTH) + x) as usize
 }
