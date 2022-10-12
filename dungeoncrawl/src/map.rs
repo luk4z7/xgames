@@ -39,6 +39,28 @@ impl Map {
             }
         }
     }
+
+    // this function is take to player only walk into the right away, and dont over
+    // walls
+    pub fn in_bounds(&self, point: Point) -> bool {
+        point.x >= 0 && point.x < SCREEN_WIDTH && point.y >= 0 && point.y < SCREEN_HEIGHT
+    }
+
+    // check if destination is valid and if a tile is a floor
+    pub fn can_enter_tile(&self, point: Point) -> bool {
+        self.in_bounds(point) && self.tiles[map_idx(point.x, point.y)] == TileType::Floor
+    }
+
+    // determining a tile's index coordinates
+    // return None no value or Some(index)
+    pub fn try_idx(&self, point: Point) -> Option<usize> {
+        // verify map coordinate is valid
+        if !self.in_bounds(point) {
+            None
+        } else {
+            Some(map_idx(point.x, point.y))
+        }
+    }
 }
 
 // return usize because vectors are indexed by
