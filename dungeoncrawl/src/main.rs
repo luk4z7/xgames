@@ -7,6 +7,9 @@ mod map_builder;
 mod player;
 use prelude::*;
 
+pub const DISPLAY_WIDTH: i32 = SCREEN_WIDTH / 2;
+pub const DISPLAY_HEIGHT: i32 = SCREEN_HEIGHT / 2;
+
 // prelude to evicted to import everything every time, less verbose
 // declare a new module
 // this don't need the pub because this is the top of crate, so this is
@@ -50,9 +53,21 @@ impl GameState for State {
 }
 
 fn main() -> BError {
-    let context = BTermBuilder::simple80x50()
+    let context = BTermBuilder::new()
         .with_title("Dungeon Crawler")
         .with_fps_cap(30.0)
+        // with_dimensions specifies the size of subsequent consoles you add
+        .with_dimensions(DISPLAY_WIDTH, DISPLAY_HEIGHT)
+        // 32x32 is the dimension of the character
+        .with_tile_dimensions(32, 32)
+        // The directory in which you placed the graphics file.
+        .with_resource_path("resources/")
+        // fonts is the same of .with_tile_dimensions in most cases
+        .with_font("dungeonfont.png", 32, 32)
+        // Add a console using the dimensions already specified and the named tile graphics file.
+        .with_simple_console(DISPLAY_WIDTH, DISPLAY_HEIGHT, "dungeonfont.png")
+        // Add a second console with no background so transparency shows through it
+        .with_simple_console_no_bg(DISPLAY_WIDTH, DISPLAY_HEIGHT, "dungeonfont.png")
         .build()?;
 
     main_loop(context, State::new())
