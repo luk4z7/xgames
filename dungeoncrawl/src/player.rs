@@ -10,10 +10,11 @@ impl Player {
     }
 
     // receive the position and set into a screen
-    pub fn render(&self, ctx: &mut BTerm) {
+    pub fn render(&self, ctx: &mut BTerm, camera: &Camera) {
+        ctx.set_active_console(1);
         ctx.set(
-            self.position.x,
-            self.position.y,
+            self.position.x - camera.left_x,
+            self.position.y - camera.top_y,
             WHITE,
             BLACK,
             to_cp437('@'),
@@ -21,7 +22,8 @@ impl Player {
     }
 
     // make a movements abound the screen when move the keyboard keys
-    pub fn update(&mut self, ctx: &mut BTerm, map: &Map) {
+    // receives multable camera, it will use it to send up-dates if the player moves
+    pub fn update(&mut self, ctx: &mut BTerm, map: &Map, camera: &mut Camera) {
         // check what key is pressed and move the player into a screen
         if let Some(key) = ctx.key {
             let delta = match key {
@@ -36,6 +38,7 @@ impl Player {
             let new_position = self.position + delta;
             if map.can_enter_tile(new_position) {
                 self.position = new_position;
+                camera.on_player_move(new_position);
             }
         }
     }
