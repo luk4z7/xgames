@@ -5,7 +5,8 @@
 mod camera;
 mod map;
 mod map_builder;
-mod player;
+// dont use anymore because of use it of ECS legion
+// mod player;
 use prelude::*;
 
 // prelude to evicted to import everything every time, less verbose
@@ -19,29 +20,44 @@ mod prelude {
     pub use crate::camera::*;
     pub use crate::map::*;
     pub use crate::map_builder::*;
-    pub use crate::player::*;
+    // pub use crate::player::*;
+    pub use legion::systems::CommandBuffer;
+    pub use legion::world::SubWorld;
+    pub use legion::*;
+
     pub const DISPLAY_WIDTH: i32 = SCREEN_WIDTH / 2;
     pub const DISPLAY_HEIGHT: i32 = SCREEN_HEIGHT / 2;
 }
 
 struct State {
-    map: Map,
-    player: Player,
-    camera: Camera,
+    ecs: World,
+    resources: Resources,
+    systems: Schedule,
+    // old model using without ecs
+    // map: Map,
+    // player: Player,
+    // camera: Camera,
 }
 
 impl State {
     fn new() -> Self {
         let mut rng = RandomNumberGenerator::new();
         let map_builder = MapBuilder::new(&mut rng);
+        let mut ecs = World::default();
+        let mut resources = Resources::default();
+        resources.insert(map_builder.map);
+        resources.insert(Camera::new(map_builder.player_start));
 
         Self {
+            esc,
+            resources,
+            systems: build_scheduler(),
             // old example
             // map: Map::new(),
             // player: Player::new(Point::new(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)),
-            map: map_builder.map,
-            player: Player::new(map_builder.player_start),
-            camera: Camera::new(map_builder.player_start),
+            // map: map_builder.map,
+            // player: Player::new(map_builder.player_start),
+            // camera: Camera::new(map_builder.player_start),
         }
     }
 }
@@ -52,9 +68,9 @@ impl GameState for State {
         ctx.cls();
         ctx.set_active_console(1);
         ctx.cls();
-        self.player.update(ctx, &self.map, &mut self.camera);
-        self.map.render(ctx, &self.camera);
-        self.player.render(ctx, &self.camera);
+        // self.player.update(ctx, &self.map, &mut self.camera);
+        // self.map.render(ctx, &self.camera);
+        // self.player.render(ctx, &self.camera);
     }
 }
 
