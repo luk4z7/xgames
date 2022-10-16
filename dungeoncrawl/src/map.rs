@@ -13,6 +13,7 @@ pub struct Map {
     pub tiles: Vec<TileType>,
 }
 
+#[allow(dead_code)]
 impl Map {
     pub fn new() -> Self {
         let x = TileType::Wall;
@@ -24,6 +25,7 @@ impl Map {
     }
 
     // received a borrowed camera to render just the visible part of the map
+    // this is not more used because used instead the Legions render map, into systems module
     pub fn render(&self, ctx: &mut BTerm, camera: &Camera) {
         // this tells the library to render to the first console layer, the base map
         ctx.set_active_console(0);
